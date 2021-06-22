@@ -42,7 +42,13 @@ public enum MetadataIndexNodeType {
   INTERNAL_MEASUREMENT((byte) 2),
 
   /** INTERNAL_MEASUREMENT */
-  LEAF_MEASUREMENT((byte) 3);
+  LEAF_MEASUREMENT((byte) 3),
+
+  /** INTERNAL_VECTOR */
+  INTERNAL_VECTOR((byte) 4),
+
+  /** LEAF_VECTOR */
+  LEAF_VECTOR((byte) 5);
 
   private final byte type;
 
@@ -66,6 +72,10 @@ public enum MetadataIndexNodeType {
         return MetadataIndexNodeType.INTERNAL_MEASUREMENT;
       case 3:
         return MetadataIndexNodeType.LEAF_MEASUREMENT;
+      case 4:
+        return MetadataIndexNodeType.INTERNAL_VECTOR;
+      case 5:
+        return MetadataIndexNodeType.LEAF_VECTOR;
       default:
         throw new IllegalArgumentException("Invalid input: " + i);
     }
