@@ -22,6 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,6 +71,14 @@ public class TracingManager {
 
   public static TracingManager getInstance() {
     return TracingManagerHelper.INSTANCE;
+  }
+
+  public void writeQueryInfo(long queryId, PhysicalPlan plan, String statement, long startTime)
+      throws IOException {
+    if (plan instanceof QueryPlan
+        && IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      writeQueryInfo(queryId, statement, startTime, ((QueryPlan) plan).getPathsNumForQuery());
+    }
   }
 
   public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)

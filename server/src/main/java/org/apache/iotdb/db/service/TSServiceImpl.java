@@ -76,7 +76,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.TracingManager;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
@@ -791,33 +790,13 @@ public class TSServiceImpl implements TSIService.Iface {
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {
-
-      // pair.left = fetchSize, pair.right = deduplicatedNum
-      Pair<Integer, Integer> p = getMemoryParametersFromPhysicalPlan(plan, fetchSize);
-      fetchSize = p.left;
-
-      // generate the queryId for the operation
-      queryId = generateQueryId(true, fetchSize, p.right);
-      // register query info to queryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
-      }
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager tracingManager = TracingManager.getInstance();
-        if (!(plan instanceof AlignByDevicePlan)) {
-          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
-        } else {
-          tracingManager.writeQueryInfo(queryId, statement, startTime);
-        }
-      }
-
-      statementId2QueryId
-          .computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
-          .add(queryId);
-
       if (plan instanceof AuthorPlan) {
         plan.setLoginUserName(username);
       }
+
+      queryId = registerQueryId(plan, statementId, fetchSize);
+      queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
+      TracingManager.getInstance().writeQueryInfo(queryId, plan, statement, startTime);
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
@@ -827,6 +806,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (plan instanceof QueryPlan) {
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
       }
+
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
 
@@ -848,8 +828,9 @@ public class TSServiceImpl implements TSIService.Iface {
       } else if (plan instanceof UDFPlan) {
         resp = getQueryColumnHeaders(plan, username);
       }
-
+      resp.setQueryId(queryId);
       resp.setOperationType(plan.getOperatorType().toString());
+
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
       } else if (plan instanceof ShowQueryProcesslistPlan) {
@@ -881,12 +862,6 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         }
       }
-      resp.setQueryId(queryId);
-
-      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance()
-            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
-      }
 
       if (enableMetric) {
         long endTime = System.currentTimeMillis();
@@ -900,9 +875,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       // remove query info in QueryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.unRegisterQuery(queryId);
-      }
+      queryTimeManager.unRegisterQuery(queryId);
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);
@@ -914,6 +887,16 @@ public class TSServiceImpl implements TSIService.Iface {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
     }
+  }
+
+  private long registerQueryId(PhysicalPlan plan, long statementId, int fetchSize) {
+    // pair.left = fetchSize, pair.right = deduplicatedNum
+    Pair<Integer, Integer> p = getMemoryParametersFromPhysicalPlan(plan, fetchSize);
+    // generate the queryId for the operation
+    long queryId = generateQueryId(true, p.left, p.right);
+    statementId2QueryId.computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>()).add(queryId);
+
+    return queryId;
   }
 
   /**

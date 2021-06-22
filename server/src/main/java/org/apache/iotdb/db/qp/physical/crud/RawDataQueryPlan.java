@@ -243,4 +243,9 @@ public class RawDataQueryPlan extends QueryPlan {
   public boolean isRawQuery() {
     return true;
   }
+
+  @Override
+  public int getPathsNumForQuery() {
+    return deduplicatedPaths.size();
+  }
 }

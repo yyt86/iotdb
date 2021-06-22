@@ -119,10 +119,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.deviceIterator = devices.iterator();
   }
 
-  public int getPathsNum() {
-    return pathsNum;
-  }
-
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public boolean hasNextWithoutConstraint() throws IOException {

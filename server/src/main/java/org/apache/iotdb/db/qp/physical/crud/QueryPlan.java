@@ -181,4 +181,6 @@ public abstract class QueryPlan extends PhysicalPlan {
   public void setWithoutAllNull(boolean withoutAllNull) {
     this.withoutAllNull = withoutAllNull;
   }
+
+  public abstract int getPathsNumForQuery();
 }

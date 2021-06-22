@@ -46,7 +46,6 @@ public class AlignByDevicePlan extends QueryPlan {
   private Map<String, TSDataType> measurementDataTypeMap;
 
   private GroupByTimePlan groupByTimePlan;
-
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -140,6 +139,11 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setAggregationPlan(AggregationPlan aggregationPlan) {
     this.aggregationPlan = aggregationPlan;
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  @Override
+  public int getPathsNumForQuery() {
+    return measurements.size() * devices.size();
   }
 
   /**
