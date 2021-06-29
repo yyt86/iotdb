@@ -593,7 +593,7 @@ public class MManager {
       if (lastNode instanceof MeasurementMNode) {
         IMeasurementSchema schema = ((MeasurementMNode) lastNode).getSchema();
         if (schema instanceof VectorMeasurementSchema) {
-          if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
+          if (schema.getSubMeasurementsList().size() != allTimeseries.size()) {
             throw new AlignedTimeseriesException(
                 "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
           } else {
@@ -692,7 +692,7 @@ public class MManager {
       updateSchemaDataTypeNumMap(schema.getType(), -1);
       timeseriesNum = 1;
     } else if (schema instanceof VectorMeasurementSchema) {
-      for (TSDataType dataType : schema.getValueTSDataTypeList()) {
+      for (TSDataType dataType : schema.getSubMeasurementsTSDataTypeList()) {
         updateSchemaDataTypeNumMap(dataType, -1);
         timeseriesNum++;
       }
@@ -833,8 +833,10 @@ public class MManager {
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
     } else {
-      List<String> measurements = schema.getValueMeasurementIdList();
-      return schema.getValueTSDataTypeList().get(measurements.indexOf(path.getMeasurement()));
+      List<String> measurements = schema.getSubMeasurementsList();
+      return schema
+          .getSubMeasurementsTSDataTypeList()
+          .get(measurements.indexOf(path.getMeasurement()));
     }
   }
 
@@ -933,7 +935,7 @@ public class MManager {
     return mtree.getAllTimeseriesPath(prefixPath);
   }
 
-  /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
+  /** Similar to method getAllTimeseriesPath(), but return Path with alias. */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath prefixPath, int limit, int offset) throws MetadataException {
     return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
@@ -1100,15 +1102,15 @@ public class MManager {
    */
   private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    List<Pair<PartialPath, String[]>> ans;
+    List<String[]> ans;
     if (plan.isOrderByHeat()) {
       ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
     } else {
       ans = mtree.getAllMeasurementSchema(plan);
     }
     List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (Pair<PartialPath, String[]> ansString : ans) {
-      long tagFileOffset = Long.parseLong(ansString.right[5]);
+    for (String[] ansString : ans) {
+      long tagFileOffset = Long.parseLong(ansString[6]);
       try {
         Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
             new Pair<>(Collections.emptyMap(), Collections.emptyMap());
@@ -1117,18 +1119,17 @@ public class MManager {
         }
         res.add(
             new ShowTimeSeriesResult(
-                ansString.left.getFullPath(),
-                ansString.right[0],
-                ansString.right[1],
-                TSDataType.valueOf(ansString.right[2]),
-                TSEncoding.valueOf(ansString.right[3]),
-                CompressionType.valueOf(ansString.right[4]),
+                ansString[0],
+                ansString[1],
+                ansString[2],
+                TSDataType.valueOf(ansString[3]),
+                TSEncoding.valueOf(ansString[4]),
+                CompressionType.valueOf(ansString[5]),
                 tagAndAttributePair.left,
                 tagAndAttributePair.right));
       } catch (IOException e) {
         throw new MetadataException(
-            "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),
-            e);
+            "Something went wrong while deserialize tag info of " + ansString[0], e);
       }
     }
     return res;
@@ -1165,15 +1166,15 @@ public class MManager {
     if (schema == null || schema.getType() != TSDataType.VECTOR) {
       return schema;
     }
-    List<String> measurementsInLeaf = schema.getValueMeasurementIdList();
+    List<String> measurementsInLeaf = schema.getSubMeasurementsList();
     List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
     TSDataType[] types = new TSDataType[measurements.size()];
     TSEncoding[] encodings = new TSEncoding[measurements.size()];
 
     for (int i = 0; i < measurements.size(); i++) {
       int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
-      types[i] = schema.getValueTSDataTypeList().get(index);
-      encodings[i] = schema.getValueTSEncodingList().get(index);
+      types[i] = schema.getSubMeasurementsTSDataTypeList().get(index);
+      encodings[i] = schema.getSubMeasurementsTSEncodingList().get(index);
     }
     String[] array = new String[measurements.size()];
     for (int i = 0; i < array.length; i++) {
@@ -2221,7 +2222,7 @@ public class MManager {
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (plan.isAligned()) {
             TSDataType dataTypeInNode =
-                measurementMNode.getSchema().getValueTSDataTypeList().get(i);
+                measurementMNode.getSchema().getSubMeasurementsTSDataTypeList().get(i);
             insertDataType = plan.getDataTypes()[i];
             if (insertDataType == null) {
               insertDataType = dataTypeInNode;
@@ -2229,7 +2230,7 @@ public class MManager {
             if (dataTypeInNode != insertDataType) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
-                  measurementMNode.getSchema().getValueMeasurementIdList().get(i),
+                  measurementMNode.getSchema().getSubMeasurementsList().get(i),
                   measurementList[i],
                   insertDataType,
                   dataTypeInNode);

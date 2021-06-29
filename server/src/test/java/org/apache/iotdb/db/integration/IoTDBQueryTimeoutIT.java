@@ -51,7 +51,7 @@ public class IoTDBQueryTimeoutIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  /** Test show query processlist, there is supposed to no result. */
+  /** Test show query processlist. */
   @Test
   public void queryProcessListTest() {
     String headerResult = "Time, queryId, statement, ";
@@ -71,11 +71,6 @@ public class IoTDBQueryTimeoutIT {
       }
       Assert.assertEquals(headerResult, headerBuilder.toString());
 
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
-      }
-      Assert.assertEquals(0, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
