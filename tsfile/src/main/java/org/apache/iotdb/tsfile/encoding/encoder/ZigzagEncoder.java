@@ -88,6 +88,7 @@ public class ZigzagEncoder extends Encoder {
     }
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
+    System.out.print("before " + len*32 + " after " + byteCache.size()*8);
     out.write(byteCache.toByteArray());
     reset();
   }

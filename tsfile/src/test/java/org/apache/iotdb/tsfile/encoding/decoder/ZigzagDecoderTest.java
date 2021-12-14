@@ -28,7 +28,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileReader;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,26 +76,52 @@ public class ZigzagDecoderTest {
   }
 
   private void testInt(List<Integer> list, boolean isDebug, int repeatCount) throws Exception {
+    long start = System.currentTimeMillis();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     Encoder encoder = new ZigzagEncoder();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
-        encoder.encode(value, baos);
+//    String filePath = new File("").getAbsolutePath();
+//    System.out.println (filePath);
+    File target = new File("./linear.csv");
+    String file = "./linear.csv";
+   BufferedReader br = new BufferedReader(new FileReader(target ));
+      String line = null;
+      int value;
+      int j = 0;
+      while (true) {
+        j = 0;
+        while (j < Integer.MAX_VALUE && (line = br.readLine()) != null ) {
+          value = Integer.valueOf(line);
+          encoder.encode(value, baos);
+          j++;
+        }
+        encoder.flush(baos);
+        if (line == null) break;
       }
 
-      encoder.flush(baos);
-    }
-
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : list) {
+//        encoder.encode(value, baos);
+//      }
+//
+//      encoder.flush(baos);
+//    }
+    int value_;
     ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
     Decoder decoder = new ZigzagDecoder();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
-        int value_ = decoder.readInt(bais);
-        if (isDebug) {
-          logger.debug("{} // {}", value_, value);
-        }
-        assertEquals(value, value_);
-      }
-    }
+    value_ = decoder.readInt(bais);
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : list) {
+//        int value_ = decoder.readInt(bais);
+//        if (isDebug) {
+//          logger.debug("{} // {}", value_, value);
+//        }
+//        assertEquals(value, value_);
+//      }
+//    }
+
+    long end = System.currentTimeMillis();
+    long time = end - start;
+
+    System.out.println("time " + time );
   }
 }
