@@ -70,27 +70,35 @@ public class ZigzagDecoderTest {
 
   @Test
   public void testZigzagReadInt() throws Exception {
+      float sum_ratio = 0;
+      float sum_throughput =0;
     for (int i = 1; i < 10; i++) {
-      testInt(intList, false, i);
+      float[] ret = testInt(intList, false, i);
+        sum_ratio += ret[0];
+        sum_throughput += ret[1];
     }
+    System.out.println("average ratio " + sum_ratio/10 + " average throughput " + sum_throughput/10);
   }
 
-  private void testInt(List<Integer> list, boolean isDebug, int repeatCount) throws Exception {
+  private float[] testInt(List<Integer> list, boolean isDebug, int repeatCount) throws Exception {
+      float[] ret = new float[2];
     long start = System.currentTimeMillis();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    Encoder encoder = new ZigzagEncoder();
+    ZigzagEncoder encoder = new ZigzagEncoder();
 //    String filePath = new File("").getAbsolutePath();
 //    System.out.println (filePath);
-    File target = new File("./linear.csv");
-    String file = "./linear.csv";
-   BufferedReader br = new BufferedReader(new FileReader(target ));
+
+    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/linear.csv";
+      File target = new File(file);
+      long size = target.length();
+              BufferedReader br = new BufferedReader(new FileReader(file));
       String line = null;
       int value;
       int j = 0;
       while (true) {
         j = 0;
         while (j < Integer.MAX_VALUE && (line = br.readLine()) != null ) {
-          value = Integer.valueOf(line);
+          value = Integer.valueOf(line.trim());
           encoder.encode(value, baos);
           j++;
         }
@@ -122,6 +130,9 @@ public class ZigzagDecoderTest {
     long end = System.currentTimeMillis();
     long time = end - start;
 
-    System.out.println("time " + time );
+    System.out.println("time " + time  + " " + (float)size/time/1000);
+    ret[0] = encoder.ratio;
+    ret[1] = (float)size/time/1000;
+    return ret;
   }
 }

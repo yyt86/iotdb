@@ -38,6 +38,7 @@ import java.util.List;
 public class ZigzagEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
   private List<Integer> values;
+  public float ratio = 0;
   byte[] buf = new byte[5];
 
   public ZigzagEncoder() {
@@ -46,6 +47,9 @@ public class ZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
   }
 
+//  public int getLength() {
+//    return this.length_;
+//  }
   /** encoding */
   private byte[] encodeInt(int n) {
     n = (n << 1) ^ (n >> 31);
@@ -86,9 +90,12 @@ public class ZigzagEncoder extends Encoder {
       byte[] bytes = encodeInt(value);
       byteCache.write(bytes, 0, bytes.length);
     }
+
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
-    System.out.print("before " + len*32 + " after " + byteCache.size()*8);
+    ratio = (float)byteCache.size()/len/4;
+    System.out.println("before " + len*32 + " after " + byteCache.size()*8);
+    System.out.println("ratio " +  (float)byteCache.size()/len/4);
     out.write(byteCache.toByteArray());
     reset();
   }
