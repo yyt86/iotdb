@@ -34,7 +34,7 @@ import java.nio.ByteBuffer;
 public class IntRleDecoder extends RleDecoder {
 
   private static final Logger logger = LoggerFactory.getLogger(IntRleDecoder.class);
-
+  public float ratio = 0;
   /** current value for rle repeated value. */
   private int currentValue;
 

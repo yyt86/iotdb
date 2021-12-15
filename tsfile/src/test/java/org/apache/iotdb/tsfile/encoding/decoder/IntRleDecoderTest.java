@@ -26,9 +26,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -112,9 +110,17 @@ public class IntRleDecoderTest {
 
   @Test
   public void testRleReadInt() throws IOException {
+//    for (int i = 1; i < 10; i++) {
+//      testLength(rleList, false, i);
+//    }
+    float sum_ratio = 0;
+    float sum_throughput =0;
     for (int i = 1; i < 10; i++) {
-      testLength(rleList, false, i);
+      float[] ret = testLength(rleList, false, i);;
+      sum_ratio += ret[0];
+      sum_throughput += ret[1];
     }
+    System.out.println("average ratio " + sum_ratio/10 + " average throughput " + sum_throughput/10);
   }
 
   @Test
@@ -166,27 +172,55 @@ public class IntRleDecoderTest {
     }
   }
 
-  public void testLength(List<Integer> list, boolean isDebug, int repeatCount) throws IOException {
+  public float[] testLength(List<Integer> list, boolean isDebug, int repeatCount) throws IOException {
+    float[] ret = new float[2];
+    long start = System.currentTimeMillis();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     RleEncoder<Integer> encoder = new IntRleEncoder();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : list) {
+//        encoder.encode(value, baos);
+//      }
+//      encoder.flush(baos);
+//    }
+    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/sin.csv";
+    File target = new File(file);
+    long size = target.length();
+    BufferedReader br = new BufferedReader(new FileReader(file));
+    String line = null;
+    int value;
+    int j = 0;
+    while (true) {
+      j = 0;
+      while (j < Integer.MAX_VALUE && (line = br.readLine()) != null ) {
+        value = Integer.valueOf(line.trim());
         encoder.encode(value, baos);
+        j++;
       }
       encoder.flush(baos);
+      if (line == null) break;
     }
+
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     RleDecoder decoder = new IntRleDecoder();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : list) {
-        int value_ = decoder.readInt(buffer);
-        if (isDebug) {
-          System.out.println(value_ + "/" + value);
-        }
-        assertEquals(value, value_);
-      }
-    }
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : list) {
+//        int value_ = decoder.readInt(buffer);
+//        if (isDebug) {
+//          System.out.println(value_ + "/" + value);
+//        }
+//        assertEquals(value, value_);
+//      }
+//    }
+    long end = System.currentTimeMillis();
+    long time = end - start;
+    int value_;
+    value_ = decoder.readInt(buffer);
+    System.out.println("time " + time  + " " + (float)size/time/1000);
+    ret[0] = (float)encoder.cache_length / j /4;
+    ret[1] = (float)size/time/1000*8;
+    return ret;
   }
 
   private void testBitPackedReadHeader(int num) throws IOException {

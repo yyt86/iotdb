@@ -155,6 +155,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       if (delta < minDeltaBase) {
         minDeltaBase = delta;
       }
+//      delta = (delta << 1) ^ (delta >> 31);
       deltaBlockBuffer[writeIndex++] = delta;
     }
 

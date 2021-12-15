@@ -46,6 +46,7 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
           + 1;
 
   private int storedValue = 0;
+  public int cache_length = 0;
 
   @Override
   public final int getOneItemMaxSize() {
@@ -71,7 +72,7 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
     // the empty ending byte is necessary when decoding
     bitsLeft = 0;
     flipByte(out);
-
+    cache_length = out.size();
     // the encoder may be reused, so let us reset it
     reset();
   }

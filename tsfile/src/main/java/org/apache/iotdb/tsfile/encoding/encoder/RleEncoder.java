@@ -100,6 +100,8 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
   protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
+  public int cache_length;
+
   /** constructor. */
   protected RleEncoder() {
     super(TSEncoding.RLE);
@@ -155,6 +157,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
     }
     // write length
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
+    cache_length = byteCache.size();
     byteCache.writeTo(out);
     reset();
   }

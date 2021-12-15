@@ -28,8 +28,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV2;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -374,58 +373,93 @@ public class GorillaDecoderV2Test {
 
   @Test
   public void testIntegerRepeat() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testInteger(i);
+//    for (int i = 1; i <= 10; i++) {
+//      testInteger(i);
+//    }
+    float sum_ratio = 0;
+    float sum_throughput =0;
+    for (int i = 1; i < 10; i++) {
+      float[] ret = testInteger(i);;
+      sum_ratio += ret[0];
+      sum_throughput += ret[1];
     }
+    System.out.println("average ratio " + sum_ratio/10 + " average throughput " + sum_throughput/10);
   }
 
-  private void testInteger(int repeatCount) throws Exception {
-    Encoder encoder = new IntGorillaEncoder();
+  private float[] testInteger(int repeatCount) throws Exception {
+    float[] ret = new float[2];
+    long start = System.currentTimeMillis();
+    IntGorillaEncoder encoder = new IntGorillaEncoder();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : GorillaDecoderV2Test.intList) {
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : GorillaDecoderV2Test.intList) {
+//        encoder.encode(value, baos);
+//      }
+//      encoder.flush(baos);
+//    }
+    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/sin.csv";
+    File target = new File(file);
+    long size = target.length();
+    BufferedReader br = new BufferedReader(new FileReader(file));
+    String line = null;
+    int value;
+    int j = 0;
+    while (true) {
+      j = 0;
+      while (j < Integer.MAX_VALUE && (line = br.readLine()) != null ) {
+        value = Integer.valueOf(line.trim());
         encoder.encode(value, baos);
+        j++;
       }
       encoder.flush(baos);
+      if (line == null) break;
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-
-    for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new IntGorillaDecoder();
-      for (int expected : GorillaDecoderV2Test.intList) {
-        if (decoder.hasNext(buffer)) {
-          int actual = decoder.readInt(buffer);
-          assertEquals(expected, actual);
-          continue;
-        }
-        fail();
-      }
+    IntGorillaDecoder decoder = new IntGorillaDecoder();
+    long end = System.currentTimeMillis();
+    long time = end - start;
+    int value_;
+    value_ = decoder.readInt(buffer);
+    System.out.println("time " + time  + " " + (float)size/time/1000);
+    ret[0] = (float)encoder.cache_length / j /4;
+    ret[1] = (float)size/time/1000*8;
+    return ret;
+//    for (int i = 0; i < repeatCount; i++) {
+//      Decoder decoder = new IntGorillaDecoder();
+//      for (int expected : GorillaDecoderV2Test.intList) {
+//        if (decoder.hasNext(buffer)) {
+//          int actual = decoder.readInt(buffer);
+//          assertEquals(expected, actual);
+//          continue;
+//        }
+//        fail();
+//      }
     }
 
-    encoder = new IntGorillaEncoder();
-    baos = new ByteArrayOutputStream();
-    for (int i = 0; i < repeatCount; i++) {
-      for (int value : GorillaDecoderV2Test.intList) {
-        encoder.encode(-value, baos);
-      }
-      encoder.flush(baos);
-    }
-
-    buffer = ByteBuffer.wrap(baos.toByteArray());
-
-    for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new IntGorillaDecoder();
-      for (int expected : GorillaDecoderV2Test.intList) {
-        if (decoder.hasNext(buffer)) {
-          int actual = decoder.readInt(buffer);
-          assertEquals(expected, -actual);
-          continue;
-        }
-        fail();
-      }
-    }
-  }
+//    encoder = new IntGorillaEncoder();
+//    baos = new ByteArrayOutputStream();
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : GorillaDecoderV2Test.intList) {
+//        encoder.encode(-value, baos);
+//      }
+//      encoder.flush(baos);
+//    }
+//
+//    buffer = ByteBuffer.wrap(baos.toByteArray());
+//
+//    for (int i = 0; i < repeatCount; i++) {
+//      Decoder decoder = new IntGorillaDecoder();
+//      for (int expected : GorillaDecoderV2Test.intList) {
+//        if (decoder.hasNext(buffer)) {
+//          int actual = decoder.readInt(buffer);
+//          assertEquals(expected, -actual);
+//          continue;
+//        }
+//        fail();
+//      }
+//    }
+//  }
 
   @Test
   public void testFloatRepeat() throws Exception {

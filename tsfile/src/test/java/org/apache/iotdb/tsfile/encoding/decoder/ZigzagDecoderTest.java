@@ -88,7 +88,7 @@ public class ZigzagDecoderTest {
 //    String filePath = new File("").getAbsolutePath();
 //    System.out.println (filePath);
 
-    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/linear.csv";
+    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/sin.csv";
       File target = new File(file);
       long size = target.length();
               BufferedReader br = new BufferedReader(new FileReader(file));
@@ -113,6 +113,8 @@ public class ZigzagDecoderTest {
 //
 //      encoder.flush(baos);
 //    }
+    long end = System.currentTimeMillis();
+    long time = end - start;
     int value_;
     ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
     Decoder decoder = new ZigzagDecoder();
@@ -127,12 +129,11 @@ public class ZigzagDecoderTest {
 //      }
 //    }
 
-    long end = System.currentTimeMillis();
-    long time = end - start;
+
 
     System.out.println("time " + time  + " " + (float)size/time/1000);
     ret[0] = encoder.ratio;
-    ret[1] = (float)size/time/1000;
+    ret[1] = (float)size/time/1000*8;
     return ret;
   }
 }

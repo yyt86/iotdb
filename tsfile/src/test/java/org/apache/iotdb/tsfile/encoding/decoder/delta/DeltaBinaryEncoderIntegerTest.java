@@ -19,13 +19,14 @@
 package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.RleDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
@@ -58,9 +59,17 @@ public class DeltaBinaryEncoderIntegerTest {
   @Test
   public void testBoundInt() throws IOException {
     int[] data = new int[ROW_NUM];
-    for (int i = 0; i < 10; i++) {
-      boundInt(i, data);
+//    for (int i = 0; i < 10; i++) {
+//      boundInt(i, data);
+//    }
+    float sum_ratio = 0;
+    float sum_throughput =0;
+    for (int i = 1; i < 10; i++) {
+      float[] ret = shouldReadAndWrite(data, ROW_NUM);
+      sum_ratio += ret[0];
+      sum_throughput += ret[1];
     }
+    System.out.println("average ratio " + sum_ratio/10 + " average throughput " + sum_throughput/10);
   }
 
   private void boundInt(int power, int[] data) throws IOException {
@@ -95,16 +104,56 @@ public class DeltaBinaryEncoderIntegerTest {
     writer.flush(out);
   }
 
-  private void shouldReadAndWrite(int[] data, int length) throws IOException {
+  private float[] shouldReadAndWrite(int[] data, int length) throws IOException {
     // System.out.println("source data size:" + 4 * length + " byte");
     out = new ByteArrayOutputStream();
-    writeData(data, length);
-    byte[] page = out.toByteArray();
-    // System.out.println("encoding data size:" + page.length + " byte");
-    buffer = ByteBuffer.wrap(page);
-    int i = 0;
-    while (reader.hasNext(buffer)) {
-      assertEquals(data[i++], reader.readInt(buffer));
+    float[] ret = new float[2];
+    long start = System.currentTimeMillis();
+    String file = "/Users/yuting/Documents/openSource/iotdb/tsfile/src/test/java/org/apache/iotdb/tsfile/encoding/decoder/sin.csv";
+    File target = new File(file);
+    long size = target.length();
+    BufferedReader br = new BufferedReader(new FileReader(file));
+    String line = null;
+    int value;
+    int j = 0;
+    while (true) {
+      j = 0;
+      while (j < Integer.MAX_VALUE && (line = br.readLine()) != null ) {
+        value = Integer.valueOf(line.trim());
+        writer.encode(value, out);;
+        j++;
+      }
+      writer.flush(out);
+      if (line == null || j == Integer.MAX_VALUE) break;
     }
+
+    int cache_length = out.size();
+    ByteBuffer buffer = ByteBuffer.wrap(out.toByteArray());
+
+//    for (int i = 0; i < repeatCount; i++) {
+//      for (int value : list) {
+//        int value_ = decoder.readInt(buffer);
+//        if (isDebug) {
+//          System.out.println(value_ + "/" + value);
+//        }
+//        assertEquals(value, value_);
+//      }
+//    }
+    long end = System.currentTimeMillis();
+    long time = end - start;
+    int value_;
+    value_ = reader.readInt(buffer);
+    System.out.println("time " + time  + " " + (float)size/time/1000);
+    ret[0] = (float)cache_length / j /4;
+    ret[1] = (float)size/time/1000*8;
+    return ret;
+//    writeData(data, length);
+//    byte[] page = out.toByteArray();
+//    // System.out.println("encoding data size:" + page.length + " byte");
+//    buffer = ByteBuffer.wrap(page);
+//    int i = 0;
+//    while (reader.hasNext(buffer)) {
+//      assertEquals(data[i++], reader.readInt(buffer));
+//    }
   }
 }
