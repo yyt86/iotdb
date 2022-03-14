@@ -21,16 +21,14 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -41,8 +39,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
@@ -50,7 +46,6 @@ public class SingleSeriesCompactionExecutor {
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
-  private boolean sequence;
 
   private IMeasurementSchema schema;
   private ChunkWriterImpl chunkWriter;
@@ -62,7 +57,6 @@ public class SingleSeriesCompactionExecutor {
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
-  private Map<Long, TimeValuePair> timeValuePairMapForUnseqMerge = new TreeMap<>();
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -74,22 +68,19 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
-      String device,
-      String timeSeries,
+      PartialPath series,
+      IMeasurementSchema measurementSchema,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
-      TsFileResource targetResource,
-      boolean sequence)
-      throws MetadataException {
-    this.device = device;
+      TsFileResource targetResource) {
+    this.device = series.getDevice();
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
-    this.schema = IoTDB.metaManager.getSeriesSchema(new PartialPath(device, timeSeries));
+    this.schema = measurementSchema;
     this.chunkWriter = new ChunkWriterImpl(this.schema);
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
-    this.sequence = sequence;
   }
 
   /**
@@ -104,12 +95,6 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-
-        if (!sequence) {
-          // if it is not sequence, deserialize it into point
-          flushChunkToMap(currentChunk);
-          continue;
-        }
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -137,8 +122,6 @@ public class SingleSeriesCompactionExecutor {
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
-    } else if (timeValuePairMapForUnseqMerge.size() > 0) {
-      flushMapToFileWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
@@ -208,7 +191,7 @@ public class SingleSeriesCompactionExecutor {
 
   /** Deserialize a chunk into points and write it to the chunkWriter */
   private void writeChunkIntoChunkWriter(Chunk chunk) throws IOException {
-    IChunkReader chunkReader = new ChunkReaderByTimestamp(chunk);
+    IChunkReader chunkReader = new ChunkReader(chunk, null);
     while (chunkReader.hasNextSatisfiedPage()) {
       IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchIterator.hasNextTimeValuePair()) {
@@ -301,29 +284,5 @@ public class SingleSeriesCompactionExecutor {
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
-  }
-
-  private void flushChunkToMap(Chunk chunk) throws IOException {
-    IChunkReader chunkReader = new ChunkReaderByTimestamp(chunk);
-    while (chunkReader.hasNextSatisfiedPage()) {
-      IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
-      while (batchIterator.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
-        timeValuePairMapForUnseqMerge.put(timeValuePair.getTimestamp(), timeValuePair);
-        if (timeValuePair.getTimestamp() > maxEndTimestamp) {
-          maxEndTimestamp = timeValuePair.getTimestamp();
-        }
-        if (timeValuePair.getTimestamp() < minStartTimestamp) {
-          minStartTimestamp = timeValuePair.getTimestamp();
-        }
-      }
-    }
-  }
-
-  private void flushMapToFileWriter() throws IOException {
-    for (TimeValuePair timeValuePair : timeValuePairMapForUnseqMerge.values()) {
-      writeTimeAndValueToChunkWriter(timeValuePair);
-    }
-    flushChunkWriter();
   }
 }
