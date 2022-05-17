@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.lastCache.container;
 
 import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
 import org.apache.iotdb.db.metadata.lastCache.container.value.LastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.container.value.EmptyCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /**
@@ -51,7 +52,9 @@ public class LastCacheContainer implements ILastCacheContainer {
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
-    } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
+    }  // add an else if to check if lastCacheValue is EnptyLastCache, update  lastCacheValue
+    // with lastCacheValue = new LastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
+    else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
         || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
       lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
       lastCacheValue.setValue(timeValuePair.getValue());
@@ -62,6 +65,12 @@ public class LastCacheContainer implements ILastCacheContainer {
   public synchronized void resetLastCache() {
     lastCacheValue = null;
   }
+
+  public synchronized void resetEnptyLastCache() {
+    lastCacheValue = new EmptyCacheValue();
+  }
+
+
 
   @Override
   public boolean isEmpty() {

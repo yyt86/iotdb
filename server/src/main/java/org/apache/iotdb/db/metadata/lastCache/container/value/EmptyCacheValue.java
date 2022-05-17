@@ -22,36 +22,26 @@ package org.apache.iotdb.db.metadata.lastCache.container.value;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class LastCacheValue implements ILastCacheValue {
+public class EmptyCacheValue implements ILastCacheValue{
 
-  private long timestamp;
+    @Override
+    public long getTimestamp() {
+        return 0;
+    }
 
-  private TsPrimitiveType value;
+    @Override
+    public void setTimestamp(long timestamp) {
+    }
 
-  public LastCacheValue(long timestamp, TsPrimitiveType value) {
-    this.timestamp = timestamp;
-    this.value = value;
-  }
+    @Override
+    public void setValue(TsPrimitiveType value){
 
-  @Override
-  public long getTimestamp() {
-    return timestamp;
-  }
+    };
 
-  @Override
-  public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
-  }
+    @Override
+    public TimeValuePair getTimeValuePair(){
+        return null;
+    };
 
-  @Override
-  public void setValue(TsPrimitiveType value) {
-    this.value = value;
-  }
-
-  @Override
-  public TimeValuePair getTimeValuePair() {
-    return new TimeValuePair(timestamp, value);
-  }
-
-  public boolean isNoData() {return false;}
+    public boolean isNoData() {return true;}
 }
